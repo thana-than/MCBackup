@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import zipfile
 import re
 import getopt, sys
+import shutil
 
 class Config:
     world_location = "./"
@@ -32,18 +33,24 @@ backup_regex = ".*{0}_(.*).zip"
 
 
 argumentList = sys.argv[1:]
+verbose = False
 
-options = "c:"
-long_options = ["Config"]
+options = "cv:"
+long_options = ["config", "verbose"]
+
+backup_zip = None
 
 try:
     # Parsing argument
     arguments, values = getopt.getopt(argumentList, options, long_options)
     # checking each argument
     for currentArgument, currentValue in arguments:
-        if currentArgument in ("-c", "--Config"):
+        if currentArgument in ("-c", "--config"):
             config_path = currentValue
-            print("Config path set to {0}".format(currentValue))
+            print(f"Config path set to {currentValue}")
+        if currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Verbose debugging enabled")
             
 except getopt.error as err:
     # output error, and return with an error code
@@ -54,10 +61,8 @@ def test_path(path: str) :
     if (os.path.exists(path) or os.access(os.path.dirname(path), os.W_OK)):
         return
 
-    print("ERROR: Path {0} is invalid.".format(path))
+    print(f"ERROR: Path {path} is invalid.")
     sys.exit(1)
-        
-test_path(config_path)
 
 time_deltas = {
     "hourly": timedelta(hours=1),
@@ -91,18 +96,33 @@ def command(str):
 def zipDir(dir: str, zip_handle: zipfile.ZipFile):
     for root, dirs, files in os.walk(dir):
         for file in files:
-            zip_handle.write(os.path.join(root, file), 
-                    os.path.relpath(os.path.join(root, file), 
-                                    os.path.join(dir, '..')))
+            file_path = os.path.join(root, file)
+            arcname = os.path.relpath(file_path, os.path.join(dir, '..'))
+            try:
+                zip_handle.write(file_path, arcname)
+                if verbose : print(f"Added {file_path} to zip as {arcname}")
+            except PermissionError as e:
+                print(f"PermissionError: {e} - {file_path}")
+            except Exception as e:
+                print(f"Error: {e} - {file_path}")
 
 
 def backup(tag: str):
     timestr = datetime.strftime(now, time_format)
-    zip_name = "backup_{0}_{1}.zip".format(tag, timestr)
-    with zipfile.ZipFile(os.path.join(Config.backup_location, zip_name), 'w', zipfile.ZIP_DEFLATED) as zip_handle:
-        zipDir(os.path.join(Config.world_location,"world"), zip_handle)
-        zipDir(os.path.join(Config.world_location,"world_nether"), zip_handle)
-        zipDir(os.path.join(Config.world_location,"world_the_end"), zip_handle)
+    zip_name = f"backup_{tag}_{timestr}.zip"
+    zip_path = os.path.join(Config.backup_location, zip_name)
+    global backup_zip
+    if (backup_zip is None):
+        backup_zip = zip_path
+        print(f"Creating new zip {backup_zip}")
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_handle:
+            zipDir(os.path.join(Config.world_location,"world"), zip_handle)
+            zipDir(os.path.join(Config.world_location,"world_nether"), zip_handle)
+            zipDir(os.path.join(Config.world_location,"world_the_end"), zip_handle)
+    else:
+        print(f"Copying from existing backup {backup_zip} to {zip_name}")
+        shutil.copyfile(backup_zip,zip_path)
+        
     log("Backup saved: " + zip_name)
 
 def try_backup(tag: str, rate: timedelta):
@@ -114,7 +134,7 @@ def try_backup(tag: str, rate: timedelta):
                 backup_time = datetime.strptime(match.group(1), time_format)
                 time_delta = now - rate
                 if (time_delta <= backup_time):
-                    print("Backup tag: {0} within given rate. Skipping.".format(tag))
+                    print(f"Backup tag: {tag} within given rate. Skipping.")
                     return;
                 else:
                     os.remove(os.path.join(Config.backup_location, match.string))
@@ -131,7 +151,7 @@ with MCRcon(Config.rcon_host, Config.rcon_password, port=Config.rcon_port) as mc
         for rate in Config.backup_frequency:
             delta = time_deltas.get(rate)
             if (delta is None):
-                print("Tag: {0} is not a valid time rate. Tag must be one of the following: {1}".format(rate, list(time_deltas)))
+                print(f"Tag: {rate} is not a valid time rate. Tag must be one of the following: f{list(time_deltas)}")
                 continue
             try_backup(rate, delta)
         command("save-on")
