@@ -98,6 +98,8 @@ def zipDir(dir: str, zip_handle: zipfile.ZipFile):
         for file in files:
             file_path = os.path.join(root, file)
             arcname = os.path.relpath(file_path, os.path.join(dir, '..'))
+            if (file == 'session.lock'): #ignore session.lock file
+                continue;
             try:
                 zip_handle.write(file_path, arcname)
                 if verbose : print(f"Added {file_path} to zip as {arcname}")
