@@ -35,7 +35,7 @@ backup_regex = ".*{0}_(.*).zip"
 argumentList = sys.argv[1:]
 verbose = False
 
-options = "cv:"
+options = "c:v"
 long_options = ["config", "verbose"]
 
 backup_zip = None
@@ -48,7 +48,7 @@ try:
         if currentArgument in ("-c", "--config"):
             config_path = currentValue
             print(f"Config path set to {currentValue}")
-        if currentArgument in ("-v", "--verbose"):
+        elif currentArgument in ("-v", "--verbose"):
             verbose = True
             print("Verbose debugging enabled")
             
