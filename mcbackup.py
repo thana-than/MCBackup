@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timedelta
 import zipfile
 import re
+import getopt, sys
 
 class Config:
     world_location = "./"
@@ -24,9 +25,39 @@ class Config:
     def get_dict(cls):
         return {key: value for key, value in cls.__dict__.items() if not key.startswith('__') and not callable(value) and not isinstance(value, (classmethod, staticmethod))}
 
+
 config_path = 'config.json'
 time_format = "%Y%m%d-%H%M%S"
 backup_regex = ".*{0}_(.*).zip"
+
+
+argumentList = sys.argv[1:]
+
+options = "c:"
+long_options = ["Config"]
+
+try:
+    # Parsing argument
+    arguments, values = getopt.getopt(argumentList, options, long_options)
+    # checking each argument
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-c", "--Config"):
+            config_path = currentValue
+            print("Config path set to {0}".format(currentValue))
+            
+except getopt.error as err:
+    # output error, and return with an error code
+    print (str(err))
+
+
+def test_path(path: str) :
+    if (os.path.exists(path) or os.access(os.path.dirname(path), os.W_OK)):
+        return
+
+    print("ERROR: Path {0} is invalid.".format(path))
+    sys.exit(1)
+        
+test_path(config_path)
 
 time_deltas = {
     "hourly": timedelta(hours=1),
@@ -45,6 +76,9 @@ if (os.path.isfile(config_path)):
 else:
     with open(config_path, 'w') as f:
         json.dump(Config.get_dict(), f, indent=4)
+
+test_path(Config.backup_location)
+test_path(Config.world_location)
 
 def log(str):
     mcr.command("say " + str)
