@@ -126,12 +126,16 @@ with MCRcon(Config.rcon_host, Config.rcon_password, port=Config.rcon_port) as mc
     log("Saving Backups")
     command("save-all")
     time.sleep(5);
-    command("save-off")
-    for rate in Config.backup_frequency:
-        delta = time_deltas.get(rate)
-        if (delta is None):
-            print("Tag: {0} is not a valid time rate. Tag must be one of the following: {1}".format(rate, list(time_deltas)))
-            continue
-        try_backup(rate, delta)
-    command("save-on")
-    log("Backups complete")
+    try:
+        command("save-off")
+        for rate in Config.backup_frequency:
+            delta = time_deltas.get(rate)
+            if (delta is None):
+                print("Tag: {0} is not a valid time rate. Tag must be one of the following: {1}".format(rate, list(time_deltas)))
+                continue
+            try_backup(rate, delta)
+        command("save-on")
+        log("Backups complete")
+    except getopt.error as err:
+        command("save-on") #ensure saving is turned on even if there's an error
+        print (str(err))
