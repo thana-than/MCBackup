@@ -86,7 +86,8 @@ test_path(Config.backup_location)
 test_path(Config.world_location)
 
 def log(str):
-    mcr.command("say " + str)
+    if (verbose):
+        mcr.command("say " + str)
     print(str)
 
 def command(str):
