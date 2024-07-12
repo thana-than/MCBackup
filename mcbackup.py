@@ -28,9 +28,12 @@ class Config:
 
 
 config_path = 'config.json'
-time_format = "%Y%m%d-%H%M%S"
-backup_regex = ".*{0}_(.*).zip"
+time_format = "%Y-%m-%d %H:%M:%S"
 
+#backup_regex = ".*{0}_(.*).zip"
+backup_info_timestamp = "Timestamp - "
+backup_info_file = "backup-info.txt"
+timestamp_regex = f"{backup_info_timestamp}(.*)"
 
 argumentList = sys.argv[1:]
 verbose = False
@@ -117,8 +120,7 @@ def zipDir(dir: str, zip_handle: zipfile.ZipFile):
 
 
 def backup(tag: str):
-    timestr = datetime.strftime(now, time_format)
-    zip_name = f"backup_{tag}_{timestr}.zip"
+    zip_name = f"backup_{tag}.zip"
     zip_path = os.path.join(Config.backup_location, zip_name)
     global backup_zip
     if (backup_zip is None):
@@ -128,25 +130,35 @@ def backup(tag: str):
             zipDir(os.path.join(Config.world_location,"world"), zip_handle)
             zipDir(os.path.join(Config.world_location,"world_nether"), zip_handle)
             zipDir(os.path.join(Config.world_location,"world_the_end"), zip_handle)
+            write_backup_info(zip_handle)
     else:
         print(f"Copying from existing backup {backup_zip} to {zip_name}")
         shutil.copyfile(backup_zip,zip_path)
         
     log("Backup saved: " + zip_name)
 
+def write_backup_info(zip_handle: zipfile.ZipFile):
+    timestr = datetime.strftime(now, time_format)
+    backupText = f"{backup_info_timestamp}{timestr}"
+    zip_handle.writestr(backup_info_file, backupText)
+
 def try_backup(tag: str, rate: timedelta):
     for root, dirs, files in os.walk(Config.backup_location):
         for file in files:
-            pattern = backup_regex.format(tag)
-            match = re.search(pattern,file)
-            if match:
+            if (tag not in file):
+                continue
+            
+            with zipfile.ZipFile(os.path.join(root,file), 'r') as archive:
+                data = archive.read(backup_info_file).decode('UTF-8')
+                match = re.search(timestamp_regex, data)
+                if (not match):
+                    continue
+                
                 backup_time = datetime.strptime(match.group(1), time_format)
                 time_delta = now - rate
                 if (time_delta <= backup_time):
                     print(f"Backup tag: {tag} within given rate. Skipping.")
                     return;
-                else:
-                    os.remove(os.path.join(Config.backup_location, match.string))
     backup(tag)
 
 now = datetime.now()
