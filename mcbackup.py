@@ -34,9 +34,10 @@ backup_regex = ".*{0}_(.*).zip"
 
 argumentList = sys.argv[1:]
 verbose = False
+dryRun = False
 
-options = "c:v"
-long_options = ["config", "verbose"]
+options = "c:v:d"
+long_options = ["config", "verbose","dry"]
 
 backup_zip = None
 
@@ -51,6 +52,9 @@ try:
         elif currentArgument in ("-v", "--verbose"):
             verbose = True
             print("Verbose debugging enabled")
+        elif currentArgument in ("-d", "--dry"):
+            dryRun = True
+            print("Dry run")
             
 except getopt.error as err:
     # output error, and return with an error code
@@ -86,11 +90,13 @@ test_path(Config.backup_location)
 test_path(Config.world_location)
 
 def log(str):
-    if (verbose):
+    if (verbose and not dryRun):
         mcr.command("say " + str)
     print(str)
 
 def command(str):
+    if (dryRun):
+        return
     response = mcr.command(str)
     log(response);
 
@@ -145,11 +151,7 @@ def try_backup(tag: str, rate: timedelta):
 
 now = datetime.now()
 
-with MCRcon(Config.rcon_host, Config.rcon_password, port=Config.rcon_port) as mcr:
-    log("Saving Backups")
-    command("save-all")
-    time.sleep(5);
-    command("save-off")
+def run_backups() :
     try:
         for rate in Config.backup_frequency:
             delta = time_deltas.get(rate)
@@ -157,7 +159,17 @@ with MCRcon(Config.rcon_host, Config.rcon_password, port=Config.rcon_port) as mc
                 print(f"Tag: {rate} is not a valid time rate. Tag must be one of the following: f{list(time_deltas)}")
                 continue
             try_backup(rate, delta)
-        log("Backups complete")
     except getopt.error as err:
         print (str(err))
-    command("save-on")
+
+log("Saving Backups")
+if not dryRun:
+    with MCRcon(Config.rcon_host, Config.rcon_password, port=Config.rcon_port) as mcr:
+        command("save-all")
+        time.sleep(5);
+        command("save-off")
+        run_backups()
+        command("save-on")
+else:
+    run_backups()
+log("Backups complete")
