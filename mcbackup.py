@@ -138,7 +138,6 @@ def backup(tag: str):
     log("Backup saved: " + zip_name)
 
 def write_backup_info(zip_handle: zipfile.ZipFile):
-    timestr = datetime.strftime(now, time_format)
     backupText = f"{backup_info_timestamp}{timestr}"
     zip_handle.writestr(backup_info_file, backupText)
 
@@ -162,6 +161,7 @@ def try_backup(tag: str, rate: timedelta):
     backup(tag)
 
 now = datetime.now()
+timestr = datetime.strftime(now, time_format)
 
 def run_backups() :
     try:
@@ -174,7 +174,7 @@ def run_backups() :
     except getopt.error as err:
         print (str(err))
 
-log("Saving Backups")
+log(f"Saving Backups: {timestr}")
 if not dryRun:
     with MCRcon(Config.rcon_host, Config.rcon_password, port=Config.rcon_port) as mcr:
         command("save-on")
