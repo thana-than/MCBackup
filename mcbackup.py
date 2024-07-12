@@ -177,6 +177,7 @@ def run_backups() :
 log("Saving Backups")
 if not dryRun:
     with MCRcon(Config.rcon_host, Config.rcon_password, port=Config.rcon_port) as mcr:
+        command("save-on")
         command("save-all")
         time.sleep(5);
         command("save-off")
