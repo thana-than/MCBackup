@@ -8,13 +8,19 @@ import re
 import getopt, sys
 import shutil
 
+#TODO google upload?
+#TODO Config should be simpler and follow simple environment setting naming
+#TODO dockerfile release automation
+#TODO tar file
+#TODO include option to save all instead of just worlds
+
 class Config:
-    world_location = "./"
-    backup_location = "./"
-    rcon_host = "localhost";
-    rcon_port = 25575;
-    rcon_password = "";
-    backup_frequency = ["weekly"]
+    world_location = os.getenv('WORLD_LOCATION', "./")
+    backup_location = os.getenv('BACKUP_LOCATION', "./backup")
+    rcon_host = os.getenv('RCON_HOST', "localhost")
+    rcon_port = int(os.getenv('RCON_PORT', 25575))
+    rcon_password = os.getenv('RCON_PASSWORD', "")
+    backup_frequency = [x.strip() for x in os.getenv('BACKUP_FREQUENCY', "weekly").split(',')]
 
     @classmethod
     def set_from_dict(cls, dict_values: dict):
@@ -26,6 +32,15 @@ class Config:
     def get_dict(cls):
         return {key: value for key, value in cls.__dict__.items() if not key.startswith('__') and not callable(value) and not isinstance(value, (classmethod, staticmethod))}
 
+    @classmethod
+    def load_config(cls, config_path):
+        if os.path.isfile(config_path):
+            with open(config_path) as f:
+                d = json.load(f)
+                cls.set_from_dict(d)
+        else:
+            with open(config_path, 'w') as f:
+                json.dump(cls.get_dict(), f, indent=4)
 
 config_path = 'config.json'
 time_format = "%Y-%m-%d %H:%M:%S"
@@ -40,7 +55,7 @@ verbose = False
 dryRun = False
 
 options = "c:v:d"
-long_options = ["config", "verbose","dry"]
+long_options = ["config", "verbose","dry","default"]
 
 backup_zip = None
 
@@ -58,6 +73,9 @@ try:
         elif currentArgument in ("-d", "--dry"):
             dryRun = True
             print("Dry run")
+        elif currentArgument in ("--default"):
+            config_path = None
+            print("Using environment for config. Will not load or create config file.")
             
 except getopt.error as err:
     # output error, and return with an error code
@@ -81,13 +99,8 @@ time_deltas = {
     "yearly": timedelta(days=365)
 }
 
-if (os.path.isfile(config_path)):
-    with open(config_path) as f:
-        d = json.load(f)
-        Config.set_from_dict(d)
-else:
-    with open(config_path, 'w') as f:
-        json.dump(Config.get_dict(), f, indent=4)
+if config_path != None:
+    Config.load_config(config_path);
 
 test_path(Config.backup_location)
 test_path(Config.world_location)
