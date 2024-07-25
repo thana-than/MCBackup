@@ -8,7 +8,8 @@ import re
 import getopt, sys
 import shutil
 
-#TODO google upload?
+#TODO dockerfile should run every x amount of time (smallest time period)
+#TODO google upload? (through rclone?)
 #TODO Config should be simpler and follow simple environment setting naming
 #TODO dockerfile release automation
 #TODO tar file
