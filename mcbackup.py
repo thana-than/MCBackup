@@ -16,12 +16,12 @@ import shutil
 #TODO include option to save all instead of just worlds
 
 class Config:
-    world_location = os.getenv('WORLD_LOCATION', "./")
-    backup_location = os.getenv('BACKUP_LOCATION', "./backup")
-    rcon_host = os.getenv('RCON_HOST', "localhost")
-    rcon_port = int(os.getenv('RCON_PORT', 25575))
-    rcon_password = os.getenv('RCON_PASSWORD', "")
-    backup_frequency = [x.strip() for x in os.getenv('BACKUP_FREQUENCY', "weekly").split(',')]
+    WORLD_LOCATION = os.getenv('WORLD_LOCATION', "./")
+    BACKUP_LOCATION = os.getenv('BACKUP_LOCATION', "./backup")
+    RCON_HOST = os.getenv('RCON_HOST', "localhost")
+    RCON_PORT = int(os.getenv('RCON_PORT', 25575))
+    RCON_PASSWORD = os.getenv('RCON_PASSWORD', "")
+    BACKUP_FREQUENCY = [x.strip() for x in os.getenv('BACKUP_FREQUENCY', "weekly").split(',')]
 
     @classmethod
     def set_from_dict(cls, dict_values: dict):
@@ -103,8 +103,8 @@ time_deltas = {
 if config_path != None:
     Config.load_config(config_path);
 
-test_path(Config.backup_location)
-test_path(Config.world_location)
+test_path(Config.BACKUP_LOCATION)
+test_path(Config.WORLD_LOCATION)
 
 def log(str):
     if (verbose and not dryRun):
@@ -135,15 +135,15 @@ def zipDir(dir: str, zip_handle: zipfile.ZipFile):
 
 def backup(tag: str):
     zip_name = f"backup_{tag}.zip"
-    zip_path = os.path.join(Config.backup_location, zip_name)
+    zip_path = os.path.join(Config.BACKUP_LOCATION, zip_name)
     global backup_zip
     if (backup_zip is None):
         backup_zip = zip_path
         print(f"Creating new zip {backup_zip}")
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_handle:
-            zipDir(os.path.join(Config.world_location,"world"), zip_handle)
-            zipDir(os.path.join(Config.world_location,"world_nether"), zip_handle)
-            zipDir(os.path.join(Config.world_location,"world_the_end"), zip_handle)
+            zipDir(os.path.join(Config.WORLD_LOCATION,"world"), zip_handle)
+            zipDir(os.path.join(Config.WORLD_LOCATION,"world_nether"), zip_handle)
+            zipDir(os.path.join(Config.WORLD_LOCATION,"world_the_end"), zip_handle)
             write_backup_info(zip_handle)
     else:
         print(f"Copying from existing backup {backup_zip} to {zip_name}")
@@ -156,7 +156,7 @@ def write_backup_info(zip_handle: zipfile.ZipFile):
     zip_handle.writestr(backup_info_file, backupText)
 
 def try_backup(tag: str, rate: timedelta):
-    for root, dirs, files in os.walk(Config.backup_location):
+    for root, dirs, files in os.walk(Config.BACKUP_LOCATION):
         for file in files:
             if (tag not in file):
                 continue
@@ -179,7 +179,7 @@ timestr = datetime.strftime(now, time_format)
 
 def run_backups() :
     try:
-        for rate in Config.backup_frequency:
+        for rate in Config.BACKUP_FREQUENCY:
             delta = time_deltas.get(rate)
             if (delta is None):
                 print(f"Tag: {rate} is not a valid time rate. Tag must be one of the following: f{list(time_deltas)}")
@@ -190,7 +190,7 @@ def run_backups() :
 
 log(f"Saving Backups: {timestr}")
 if not dryRun:
-    with MCRcon(Config.rcon_host, Config.rcon_password, port=Config.rcon_port) as mcr:
+    with MCRcon(Config.RCON_HOST, Config.RCON_PASSWORD, port=Config.RCON_PORT) as mcr:
         command("save-on")
         command("save-all")
         time.sleep(5);
