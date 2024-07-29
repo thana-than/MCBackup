@@ -1,5 +1,5 @@
 *.zip
-*.json
 .vscode
 .venv/
 .testdir
+*.ini

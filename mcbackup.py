@@ -1,5 +1,4 @@
 from mcrcon import MCRcon
-import json
 import os.path
 import time
 from datetime import datetime, timedelta
@@ -7,10 +6,10 @@ import zipfile
 import re
 import getopt, sys
 import shutil
+import configparser
 
 #TODO dockerfile should run every x amount of time (smallest time period)
 #TODO google upload? (through rclone?)
-#TODO Config should be simpler and follow simple environment setting naming
 #TODO dockerfile release automation
 #TODO tar file
 #TODO include option to save all instead of just worlds
@@ -21,13 +20,7 @@ class Config:
     RCON_HOST = os.getenv('RCON_HOST', "localhost")
     RCON_PORT = int(os.getenv('RCON_PORT', 25575))
     RCON_PASSWORD = os.getenv('RCON_PASSWORD', "")
-    BACKUP_FREQUENCY = [x.strip() for x in os.getenv('BACKUP_FREQUENCY', "weekly").split(',')]
-
-    @classmethod
-    def set_from_dict(cls, dict_values: dict):
-        for key, value in dict_values.items():
-            if hasattr(cls, key):
-                setattr(cls, key, value)
+    BACKUP_FREQUENCY = os.getenv('BACKUP_FREQUENCY', "daily,weekly")
 
     @classmethod
     def get_dict(cls):
@@ -35,15 +28,23 @@ class Config:
 
     @classmethod
     def load_config(cls, config_path):
+        config = configparser.ConfigParser()
+        config.optionxform = str
         if os.path.isfile(config_path):
             with open(config_path) as f:
-                d = json.load(f)
-                cls.set_from_dict(d)
+                config.read_file(f)
+                for key, value in config.items(config.default_section):
+                    if hasattr(cls, key):
+                        setattr(cls, key, value)
         else:
-            with open(config_path, 'w') as f:
-                json.dump(cls.get_dict(), f, indent=4)
+            state = cls.get_dict()
+            for key in state:
+                config['DEFAULT'][key] = str(state[key])
 
-config_path = 'config.json'
+            with open(config_path, 'w') as f:
+                config.write(f, False);
+
+config_path = 'config.ini'
 time_format = "%Y-%m-%d %H:%M:%S"
 
 #backup_regex = ".*{0}_(.*).zip"
@@ -179,7 +180,8 @@ timestr = datetime.strftime(now, time_format)
 
 def run_backups() :
     try:
-        for rate in Config.BACKUP_FREQUENCY:
+        backup_items = [x.strip() for x in Config.BACKUP_FREQUENCY.split(',')]
+        for rate in backup_items:
             delta = time_deltas.get(rate)
             if (delta is None):
                 print(f"Tag: {rate} is not a valid time rate. Tag must be one of the following: f{list(time_deltas)}")
