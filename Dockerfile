@@ -8,8 +8,8 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Set app environments
-ENV WORLD_LOCATION=/app/server
-ENV BACKUP_LOCATION=/app/backup
+ENV WORLD_LOCATION=/app/server/
+ENV BACKUP_LOCATION=/app/backup/
 
 # Create necessary directories
 RUN mkdir -p /app/server /app/backup

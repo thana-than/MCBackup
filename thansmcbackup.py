@@ -10,7 +10,6 @@ import configparser
 
 #TODO google upload? (through rclone?)
 #TODO tar file
-#TODO include option to save all instead of just worlds
 
 class Config:
     WORLD_LOCATION = os.getenv('WORLD_LOCATION', "./")
@@ -19,6 +18,7 @@ class Config:
     RCON_PORT = int(os.getenv('RCON_PORT', 25575))
     RCON_PASSWORD = os.getenv('RCON_PASSWORD', "")
     BACKUP_FREQUENCY = os.getenv('BACKUP_FREQUENCY', "daily,weekly")
+    BACKUP_REGEX_MATCH = os.getenv('BACKUP_REGEX_MATCH', ".*")
 
     @classmethod
     def get_dict(cls):
@@ -59,8 +59,10 @@ def zipDir(dir: str, zip_handle: zipfile.ZipFile):
     for root, dirs, files in os.walk(dir):
         for file in files:
             file_path = os.path.join(root, file)
-            arcname = os.path.relpath(file_path, os.path.join(dir, '..'))
+            arcname = os.path.relpath(file_path, dir)
             if (file == 'session.lock'): #ignore session.lock file
+                continue;
+            elif not bool(re.search(Config.BACKUP_REGEX_MATCH, arcname)): #Check if approved by our regex
                 continue;
             try:
                 zip_handle.write(file_path, arcname)
@@ -79,9 +81,7 @@ def backup(tag: str):
         backup_zip = zip_path
         print(f"Creating new zip {backup_zip}")
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_handle:
-            zipDir(os.path.join(Config.WORLD_LOCATION,"world"), zip_handle)
-            zipDir(os.path.join(Config.WORLD_LOCATION,"world_nether"), zip_handle)
-            zipDir(os.path.join(Config.WORLD_LOCATION,"world_the_end"), zip_handle)
+            zipDir(Config.WORLD_LOCATION, zip_handle)
             write_backup_info(zip_handle)
     else:
         print(f"Copying from existing backup {backup_zip} to {zip_name}")
