@@ -8,7 +8,6 @@ import getopt, sys
 import shutil
 import configparser
 
-#TODO dockerfile should run every x amount of time (smallest time period)
 #TODO google upload? (through rclone?)
 #TODO tar file
 #TODO include option to save all instead of just worlds
@@ -43,68 +42,7 @@ class Config:
             with open(config_path, 'w') as f:
                 config.write(f, False);
 
-config_path = 'config.ini'
-time_format = "%Y-%m-%d %H:%M:%S"
-
-#backup_regex = ".*{0}_(.*).zip"
-backup_info_timestamp = "Timestamp - "
-backup_info_file = "backup-info.txt"
-timestamp_regex = f"{backup_info_timestamp}(.*)"
-
-argumentList = sys.argv[1:]
-verbose = False
-dryRun = False
-
-options = "c:v:d"
-long_options = ["config", "verbose","dry","default"]
-
-backup_zip = None
-
-try:
-    # Parsing argument
-    arguments, values = getopt.getopt(argumentList, options, long_options)
-    # checking each argument
-    for currentArgument, currentValue in arguments:
-        if currentArgument in ("-c", "--config"):
-            config_path = currentValue
-            print(f"Config path set to {currentValue}")
-        elif currentArgument in ("-v", "--verbose"):
-            verbose = True
-            print("Verbose debugging enabled")
-        elif currentArgument in ("-d", "--dry"):
-            dryRun = True
-            print("Dry run")
-        elif currentArgument in ("--default"):
-            config_path = None
-            print("Using environment for config. Will not load or create config file.")
-            
-except getopt.error as err:
-    # output error, and return with an error code
-    print (str(err))
-
-
-def test_path(path: str) :
-    if (os.path.exists(path) or os.access(os.path.dirname(path), os.W_OK)):
-        return
-
-    print(f"ERROR: Path {path} is invalid.")
-    sys.exit(1)
-
-time_deltas = {
-    "hourly": timedelta(hours=1),
-    "daily": timedelta(days=1),
-    "weekly": timedelta(weeks=1),
-    "biweekly": timedelta(weeks=2),
-    "monthly": timedelta(weeks=4),
-    "quarterly": timedelta(weeks=13),
-    "yearly": timedelta(days=365)
-}
-
-if config_path != None:
-    Config.load_config(config_path);
-
-test_path(Config.BACKUP_LOCATION)
-test_path(Config.WORLD_LOCATION)
+# region Methods
 
 def log(str):
     if (verbose and not dryRun):
@@ -174,9 +112,6 @@ def try_backup(tag: str, rate: timedelta):
                     return;
     backup(tag)
 
-now = datetime.now()
-timestr = datetime.strftime(now, time_format)
-
 def run_backups() :
     try:
         backup_items = [x.strip() for x in Config.BACKUP_FREQUENCY.split(',')]
@@ -189,18 +124,103 @@ def run_backups() :
     except getopt.error as err:
         print (str(err))
 
-log(f"Saving Backups: {timestr}")
-if not dryRun:
-    connectionLogLine = f"Connecting to {Config.RCON_HOST}:{Config.RCON_PORT}"
-    if (Config.RCON_PASSWORD != ""): connectionLogLine += f" with password: {'•' * len(Config.RCON_PASSWORD)}"
-    print(connectionLogLine)
-    with MCRcon(Config.RCON_HOST, Config.RCON_PASSWORD, port=Config.RCON_PORT) as mcr:
-        command("save-on")
-        command("save-all")
-        time.sleep(5);
-        command("save-off")
+def test_path(path: str) :
+    if (os.path.exists(path) or os.access(os.path.dirname(path), os.W_OK)):
+        return
+
+    print(f"ERROR: Path {path} is invalid.")
+    sys.exit(1)
+
+#endregion
+
+config_path = 'config.ini'
+time_format = "%Y-%m-%d %H:%M:%S"
+
+#backup_regex = ".*{0}_(.*).zip"
+backup_info_timestamp = "Timestamp - "
+backup_info_file = "backup-info.txt"
+timestamp_regex = f"{backup_info_timestamp}(.*)"
+
+verbose = False
+dryRun = False
+
+backup_zip = None
+repeat = False
+
+options = "c:v:d:r"
+long_options = ["config", "verbose","dry","default","repeat"]
+argumentList = sys.argv[1:]
+
+try:
+    # Parsing argument
+    arguments, values = getopt.getopt(argumentList, options, long_options)
+    # checking each argument
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-c", "--config"):
+            config_path = currentValue
+            print(f"Config path set to {currentValue}")
+        elif currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Verbose debugging enabled")
+        elif currentArgument in ("-d", "--dry"):
+            dryRun = True
+            print("Dry run")
+        elif currentArgument in ("--default"):
+            config_path = None
+            print("Using environment for config. Will not load or create config file.")
+        elif currentArgument in ("-r, --repeat"):
+            repeat = True
+            print("Will repeat at the top of every hour.")
+            
+except getopt.error as err:
+    # output error, and return with an error code
+    print (str(err))
+
+if config_path != None:
+    Config.load_config(config_path);
+
+test_path(Config.BACKUP_LOCATION)
+test_path(Config.WORLD_LOCATION)
+
+while (True):
+    now = datetime.now()
+    timestr = datetime.strftime(now, time_format)
+
+    time_deltas = {
+        "hourly": timedelta(hours=1),
+        "daily": timedelta(days=1),
+        "weekly": timedelta(weeks=1),
+        "biweekly": timedelta(weeks=2),
+        "monthly": timedelta(weeks=4),
+        "quarterly": timedelta(weeks=13),
+        "yearly": timedelta(days=365)
+    }
+
+    log(f"Saving Backups: {timestr}")
+    if not dryRun:
+        connectionLogLine = f"Connecting to {Config.RCON_HOST}:{Config.RCON_PORT}"
+        if (Config.RCON_PASSWORD != ""): connectionLogLine += f" with password: {'•' * len(Config.RCON_PASSWORD)}"
+        print(connectionLogLine)
+        with MCRcon(Config.RCON_HOST, Config.RCON_PASSWORD, port=Config.RCON_PORT) as mcr:
+            command("save-on")
+            command("save-all")
+            time.sleep(5);
+            command("save-off")
+            run_backups()
+            command("save-on")
+    else:
         run_backups()
-        command("save-on")
-else:
-    run_backups()
-log("Backups complete")
+
+    log("Backups complete")
+
+
+    #* POST
+    if repeat == False:
+        sys.exit()
+    
+    # Calculate the time until the next hour
+    next_hour = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+    # Calculate the sleep duration
+    sleep_duration = (next_hour - now).total_seconds()
+    print(f"Sleeping until {next_hour}.")
+    time.sleep(sleep_duration)
