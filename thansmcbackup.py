@@ -191,7 +191,9 @@ def run_backups() :
 
 log(f"Saving Backups: {timestr}")
 if not dryRun:
-    print(f"Connecting to {Config.RCON_HOST}:{Config.RCON_PORT}")
+    connectionLogLine = f"Connecting to {Config.RCON_HOST}:{Config.RCON_PORT}"
+    if (Config.RCON_PASSWORD != ""): connectionLogLine += f" with password: {'•' * len(Config.RCON_PASSWORD)}"
+    print(connectionLogLine)
     with MCRcon(Config.RCON_HOST, Config.RCON_PASSWORD, port=Config.RCON_PORT) as mcr:
         command("save-on")
         command("save-all")
