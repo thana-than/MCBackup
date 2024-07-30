@@ -8,7 +8,6 @@ import getopt, sys
 import shutil
 import configparser
 
-#TODO google upload? (through rclone?)
 #TODO tar file
 
 class Config:
