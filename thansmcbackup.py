@@ -113,8 +113,7 @@ def try_backup(tag: str, rate: timedelta):
 
 def run_backups() :
     try:
-        backup_items = [x.strip() for x in Config.BACKUP_FREQUENCY.split(',')]
-        for rate in backup_items:
+        for rate in backup_frequency:
             delta = time_deltas.get(rate)
             if (delta is None):
                 print(f"Tag: {rate} is not a valid time rate. Tag must be one of the following: f{list(time_deltas)}")
@@ -142,8 +141,6 @@ timestamp_regex = f"{backup_info_timestamp}(.*)"
 
 verbose = False
 dryRun = False
-
-backup_zip = None
 repeat = False
 
 options = "c:v:d:r"
@@ -181,7 +178,10 @@ if config_path != None:
 test_path(Config.BACKUP_LOCATION)
 test_path(Config.WORLD_LOCATION)
 
+backup_frequency = [x.strip() for x in Config.BACKUP_FREQUENCY.split(',')]
+
 while (True):
+    backup_zip = None
     now = datetime.now()
     timestr = datetime.strftime(now, time_format)
 
